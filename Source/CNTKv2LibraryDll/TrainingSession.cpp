@@ -109,7 +109,8 @@ namespace CNTK
         m_parallelAfterSamples(0),
         m_workerRank(0),
         m_numberOfWorkers(1),
-        m_test(test)
+        m_test(test),
+        m_mbSizeScaler(1)
     {
         if (!m_trainer)
             InvalidArgument("Trainer must not be null.");
@@ -135,6 +136,7 @@ namespace CNTK
                 m_parallelAfterSamples = std::max(m_parallelAfterSamples, distributed->ParallelizationAfter());
                 m_workerRank = distributed->GetCommunicator()->CurrentWorker().m_globalRank;
                 m_numberOfWorkers = distributed->GetCommunicator()->Workers().size();
+                m_mbSizeScaler = distributed->MinibatchSizeScaler();
             }
         }
 
