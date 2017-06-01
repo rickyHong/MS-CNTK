@@ -377,13 +377,14 @@ private:
                 for (size_t i : m_gradientIndexToAggregate)
                 {
                     reductionBuffer = (i == -1)? m_aggregationBuffer->Data() : gradients[i]->Data();
-                    // GPUDataTransferer gpuDataTransferer(deviceId, m_useAsyncAggregation);
-                    // std::shared_ptr<ElemType> intermediateCPUBuffer = AllocateIntermediateBuffer(deviceId, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements());
-                    // gpuDataTransferer.CopyGPUToCPUAsync(reductionBuffer, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements(), intermediateCPUBuffer.get());
-                    // gpuDataTransferer.WaitForCopyGPUToCPUAsync();
+                    m_allocator.reset(new CUDAPageLockedMemAllocator(deviceId));
+                    GPUDataTransferer gpuDataTransferer(deviceId, m_useAsyncAggregation);
+                    std::shared_ptr<ElemType> intermediateCPUBuffer = AllocateIntermediateBuffer(deviceId, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements());
+                    gpuDataTransferer.CopyGPUToCPUAsync(reductionBuffer, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements(), intermediateCPUBuffer.get());
+                    gpuDataTransferer.WaitForCopyGPUToCPUAsync();
                     m_localMpi->AllReduce(reductionBuffer, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements());
-                    // gpuDataTransferer.CopyCPUToGPUAsync(intermediateCPUBuffer.get(), (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements(), reductionBuffer);
-                    // gpuDataTransferer.WaitForCopyCPUToGPUAsync();
+                    gpuDataTransferer.CopyCPUToGPUAsync(intermediateCPUBuffer.get(), (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements(), reductionBuffer);
+                    gpuDataTransferer.WaitForCopyCPUToGPUAsync();
                 }
             }
             m_mpi->WaitAll(); // Barrier to make sure all arrive here.
